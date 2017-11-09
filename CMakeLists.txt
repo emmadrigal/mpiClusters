@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(CLUSTER)
 
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
+
 find_package(MPI REQUIRED)
 find_package( OpenCV REQUIRED )
 
