@@ -1,5 +1,5 @@
 #include <string>
-#include<iostream>
+#include <iostream>
 #include <algorithm>    // std::partial_sort
 
 //Used for time measurement
@@ -184,6 +184,8 @@ int main(int argc, char** argv) {
 */
 
 void display(std::string imgAdd, int windowSize){
+	double start, end;
+	
 	cv::Mat src, dst;
 	
 	unsigned char* inData;
@@ -193,7 +195,6 @@ void display(std::string imgAdd, int windowSize){
 	int imgSize;
 	int imgRows;
 	int imgCols;
-	dst = src.clone();
 	
 	MPI_Init(NULL, NULL);
 	
@@ -202,9 +203,14 @@ void display(std::string imgAdd, int windowSize){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
+	
+	MPI_Barrier(MPI_COMM_WORLD); /* IMPORTANT */
+	start = MPI_Wtime();
+	
 	//Broadcast image dimenstions to all nodes so that they can reserve memory
 	if (rank == 0) {
 		src = cv::imread(imgAdd, CV_LOAD_IMAGE_GRAYSCALE);
+		dst = cv::Mat(src.rows, src.cols, CV_8U);
 		
 		if( !src.data ){
 			printf("Image not found\n");
@@ -252,17 +258,13 @@ void display(std::string imgAdd, int windowSize){
 			// Pick up window element
 			for(int u = -windowSize; u <= windowSize; u++){
 				for(int v = -windowSize; v <= windowSize; v++){
-					
 					int row = (j + v + u*src.rows) / imgRows;
 					int col = (j + v + u*src.rows) % imgRows;
 					
-					
-					if( (row > 0) && (row < imgRows) && (col > 0) && (col < imgCols) ){
+					if( (row > 0) && (row < imgRows) && (col > 0) && (col < imgCols) )
 						window[cnt] = src.data[j + v + u*src.rows];
-					}
-					else{
+					else
 						window[cnt] = 128;
-					}
 					cnt++;
 				}
 			}
@@ -291,17 +293,13 @@ void display(std::string imgAdd, int windowSize){
 			// Pick up window element
 			for(int u = -windowSize; u <= windowSize; u++){
 				for(int v = -windowSize; v <= windowSize; v++){
-					
 					int row = (j + v + u*src.rows) / imgRows;
 					int col = (j + v + u*src.rows) % imgRows;
 					
-					
-					if( (row > 0) && (row < imgRows) && (col > 0) && (col < imgCols) ){
+					if( (row > 0) && (row < imgRows) && (col > 0) && (col < imgCols) )
 						window[cnt] = inData[j + v + u*src.rows];
-					}
-					else{
+					else
 						window[cnt] = 128;
-					}
 					cnt++;
 				}
 			}
@@ -348,7 +346,8 @@ void display(std::string imgAdd, int windowSize){
 	}
 	
 	//Waits for all procs to reach this point
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD); /* IMPORTANT */
+	end = MPI_Wtime();
 	
 	if(rank == 0){
 			cv::Mat dst = cv::Mat(cvSize(src.cols, src.rows), CV_8U, displayData);
@@ -359,13 +358,15 @@ void display(std::string imgAdd, int windowSize){
 			cv::namedWindow("initial");
 			cv::imshow("initial", src);
 			
+			printf("time: %.6fs\n", end -start);
+			
 			cv::waitKey();
 	}
 	MPI_Finalize();
 }
 
 
-int main(int ac, char* av[]){    
+int main(int ac, char* av[]){
 	try{
 		std::string address;
 		int kernelSize;
